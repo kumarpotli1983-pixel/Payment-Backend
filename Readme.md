@@ -50,4 +50,33 @@ dotenv.config({
 # creating models
 
 1. create user schema and take fields
-2. using pre - mongoose middleware , hash the password
+2. using pre - mongoose middleware , hash the password , userschema.methods.isPasswordCorrect , accessToken and refreshToken generations
+
+-> bcrypt - install "npm i bcryptjs" to hash passwords : bcrypt.hash(pass,salt)
+    1. it takes password and salts (which adds complexity and depends on computation power)
+    2. lets say user1-pass: hello123
+                user2-pass: hello123
+        hashing(user1-pass,user2-pass)=same but based on salts context matters and changes
+        -> user1:salt:10 (random string :- xyz@123)
+        -> user2.salt:12 (random string :- abc%32@)
+        * now hash(user1-pass,user1-salt)!= hash(user2-pass,user2:salt)
+
+-> jsonwebtoken - install for accessToken and refreshToken
+    1. it takes payload i.e data 
+    2. secret password
+    3. expires
+
+-> cookie-parser : after generating passwords we will send them/store in cookies 
+
+* cookie-parser dont help in creating cookies but helps in reading it and putting it into req.cookes. same like express.json() as we used to take data and structurize in form of object similarly cookie-paser take data in the form of stering and converts it into cookie object which can be retrived using re.cookies
+
+==========================================================================
+# define ApiError and ApiResponse and asyncHandler 
+
+- define and customize above things for the handling Api's.
+- create auth controller / user controller , auth routes
+==========================================================================
+# authcontroller
+
+- sometimes we take data/info from user in req.body but express cant take raw data or json files so we use "app.use(express.json())"
+     -- simply express server cannot directly read info passed on req.body so we will use ...
