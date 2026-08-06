@@ -21,6 +21,9 @@ const userSchema = new mongoose.Schema({
     required:[true,"Password is required for creating account"],
     minlength:[6,"password should contain more than 6 characters"],
     select:false
+  },
+  refreshToken:{
+    type:String
   }
 },
 {timestamps:true})
