@@ -2,7 +2,7 @@ import { User } from "../models/user.model.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import emailService from "../services/email.service.js"
+import { sendRegistrationEmail } from "../services/email.service.js"
 
 const generateAccessAndRefreshTokens = async(userId)=>{
   try {
@@ -67,7 +67,7 @@ const registerUser = asyncHandler(async(req,res)=>{
       "User registered Successfully"
       ))
     
-  await emailService(email,name)
+  await sendRegistrationEmail(email,name);
 })
 
 const loginUser = asyncHandler(async(req,res)=>{
