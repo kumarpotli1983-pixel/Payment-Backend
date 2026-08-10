@@ -7,11 +7,11 @@ app.use(cookieParser())
 
 //routes
 import authRouter from './routes/auth.routes.js'
-
+import accountRouter from './routes/account.routes.js'
 
 //secured routes
-app.use("/api/auth",authRouter)
-
+app.use("/api/v1/auth",authRouter)
+app.use("/api/v1/accounts",accountRouter)
 
 
 export default app
