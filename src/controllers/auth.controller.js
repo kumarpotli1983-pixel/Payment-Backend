@@ -2,6 +2,7 @@ import { User } from "../models/user.model.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
+import emailService from "../services/email.service.js"
 
 const generateAccessAndRefreshTokens = async(userId)=>{
   try {
@@ -11,8 +12,8 @@ const generateAccessAndRefreshTokens = async(userId)=>{
     throw new ApiError(404, "User not found")
     }
 
-    const accessToken = user.generateAccessToken()
-    const refreshToken = user.generateRefreshToken()
+    const accessToken = await  user.generateAccessToken()
+    const refreshToken = await user.generateRefreshToken()
 
     user.refreshToken = refreshToken 
     await user.save({validateBeforeSave : false})
@@ -51,20 +52,22 @@ const registerUser = asyncHandler(async(req,res)=>{
     secure : true
   }
 
-  return res.status(201)
-            .cookie("accessToken",accessToken,options)
-            .cookie("refreshToken",refreshToken,options)
-            .json(new ApiResponse(201,{
-              user:{
-                _id:user._id,
-                email:user.email,
-                name:user.name
-              },
-              accessToken,
-              refreshToken
-            },
-            "User registered Successfully"
-            ))
+  res.status(201)
+      .cookie("accessToken",accessToken,options)
+      .cookie("refreshToken",refreshToken,options)
+      .json(new ApiResponse(201,{
+        user:{
+          _id:user._id,
+          email:user.email,
+          name:user.name
+        },
+        accessToken,
+        refreshToken
+      },
+      "User registered Successfully"
+      ))
+    
+  await emailService(email,name)
 })
 
 const loginUser = asyncHandler(async(req,res)=>{
@@ -75,7 +78,7 @@ const loginUser = asyncHandler(async(req,res)=>{
     throw new ApiError(400, "Email and password are required");
   }
 
-  const user = await User.findOne({email}).select(+password)
+  const user = await User.findOne({email}).select("+password")
 
   if(!user)
   {

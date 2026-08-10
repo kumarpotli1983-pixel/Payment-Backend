@@ -5,6 +5,10 @@ dotenv.config({
   path:"./.env"
 })
 
+import dns from "dns";
+
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
+
 connectToDb()
 .then(()=>{
   app.listen(process.env.PORT || 3500,(req,res)=>{
