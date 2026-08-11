@@ -1,5 +1,5 @@
 import mongoose from "mongoose"
-import { Ledger } from "./ledger.model"
+import { Ledger } from "./ledger.model.js"
 
 const accountSchema = new mongoose.Schema({
   user:{

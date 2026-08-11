@@ -15,7 +15,7 @@ const ledgerSchema = new mongoose.Schema({
     immutable:true
   },
   transaction:{
-    type:mongoose.Schema.Types.objectId,
+    type:mongoose.Schema.Types.ObjectId,
     ref:'Transaction',
     required:true,
     immutable:true,
@@ -23,7 +23,7 @@ const ledgerSchema = new mongoose.Schema({
   type:{
     type:String,
     enum:{
-      value:['Credit','Debit'],
+      values:["Credit","Debit"],
       message:"Type of payment is required"
     },
     required:true,

@@ -6,6 +6,6 @@ const router = Router();
 
 router.use(verifyJWT)
 
-router.POST("/new Transaction",createTransaction)
+router.post("/new-Transaction",createTransaction)
 
 export default router
