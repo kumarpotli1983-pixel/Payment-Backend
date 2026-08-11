@@ -1,9 +1,10 @@
+import "dotenv/config";
+
+console.log("SERVER EMAIL:", process.env.USER_EMAIL);
+
 import app from './app.js'
-import dotenv from "dotenv"
 import connectToDb from './config/db.js'
-dotenv.config({
-  path:"./.env"
-})
+
 
 import dns from "dns";
 
