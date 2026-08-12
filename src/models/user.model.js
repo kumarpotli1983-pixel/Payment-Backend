@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema({
   },
   refreshToken:{
     type:String
+  },
+  systemUser:{
+    type:Boolean,
+    default:false,
+    immutable:true,
+    select:false
   }
 },
 {timestamps:true})

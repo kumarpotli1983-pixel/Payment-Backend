@@ -20,6 +20,10 @@ const accountSchema = new mongoose.Schema({
     type:String,
     required:[true,'Currenc is required for creating an account'],
     default:"INR"
+  },
+  username:{
+    type:String,
+    required:[true,"User name is required"]
   }
 },{timestamps:true})
 
