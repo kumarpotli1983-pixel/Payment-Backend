@@ -4,7 +4,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Account } from "../models/account.model.js";
-import { sendTransactionEmail } from "../services/email.service.js";
+import { sendTransactionEmail, sendTransactionFailedEmail } from "../services/email.service.js";
+import mongoose from "mongoose"
 
 /* 
  - create a new transaction
@@ -85,40 +86,159 @@ const createTransaction = asyncHandler(async(req,res)=>{
   // new transaction
 
   const session = await  mongoose.startSession()
-  session.startTransaction()
+  
 
-  const newTransaction = await Transaction.create({
-    fromAccount,
-    toAccount,
-    amount,
-    status:"Pending",
-    idempotencyKey,
-  }, { session })
+  try {
+    session.startTransaction()
 
-  const debitLedgerEntry = await Ledger.create({
-    account: fromAccount,
-    amount: amount,
-    transaction: newTransaction._id,
-    type:"Debit"
-  },{ session })
+    const newTransaction = new Transaction({
+      fromAccount,
+      toAccount,
+      amount,
+      status:"Pending",
+      idempotencyKey,
+    })
 
-  const creditLedgerEntry = await Ledger.create({
-    account: toAccount,
-    amount: amount,
-    transaction: newTransaction._id,
-    type:"Credit"
-  },{ session })
+    const debitLedgerEntry = await Ledger.create([{
+      account: fromAccount,
+      amount: amount,
+      transaction: newTransaction._id,
+      type:"Debit"
+    }],{ session })
 
-  newTransaction.status = "Completed"
-  await newTransaction.save({ session })
+    const creditLedgerEntry = await Ledger.create([{
+      account: toAccount,
+      amount: amount,
+      transaction: newTransaction._id,
+      type:"Credit"
+    }],{ session })
 
-  await session.commitTransaction()
-  session.endSession()
+    newTransaction.status = "Completed"
+    await newTransaction.save({ session })
 
-  await sendTransactionEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
+    await session.commitTransaction()
+
+    await sendTransactionEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
+    
+  } catch (error) {
+    newTransaction.status = "Failed"
+    await newTransaction.save({ session })
+
+    await session.abortTransaction()
+
+    await sendTransactionFailedEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
+
+    throw new ApiError(404,"Last transaction is failed")
+  }
+  finally{
+    await session.endSession()
+  }
 
   return res.status(201)
             .json(new ApiResponse(201,newTransaction,"Transaction Completed"))
 })
 
-export {createTransaction}
+const createInitialFundTransaction = asyncHandler(async(req,res)=>{
+
+  const {toAccount, amount, idempotencyKey} = req.body
+
+  if([toAccount,amount,idempotencyKey].some((field)=>!field))
+  {
+    throw new ApiError(400,"All fields are required for transaction")
+  }
+
+  if(amount===0)
+  {
+    throw new ApiError(400,"Amount Cannot be Zero")
+  }
+
+  const toUserAccountExists = await Account.findOne({_id:toAccount})
+
+  if(!toUserAccountExists)
+  {
+    throw new ApiError(400,"Invalid Receiver Account")
+  }
+
+  const idempotencyKeyExists = await Transaction.findOne({idempotencyKey})
+
+  if(idempotencyKeyExists)
+  {
+    if(idempotencyKeyExists.status==="Pending")
+    {
+      return res.status(200)
+                .json(new ApiResponse(200,idempotencyKeyExists,"Transaction is processing, please wait"))
+    }
+    if(idempotencyKeyExists.status==="Completed")
+    {
+      return res.status(200)
+                .json(new ApiResponse(200,idempotencyKeyExists,"Transaction Completed"))
+    }
+    if(idempotencyKeyExists.status==="Failed")
+    {
+      return res.status(200)
+                .json(new ApiResponse(200,idempotencyKeyExists,"Transaction Failed, try again"))
+    }
+    if(idempotencyKeyExists.status==="Reversed")
+    {
+      return res.status(200)
+                .json(new ApiResponse(200,idempotencyKeyExists,"Transaction Reversed, try again"))
+    }
+  }
+
+  const fromUserAccountExists = await Account.findOne({
+    user:req.user._id
+  })
+
+  if(!fromUserAccountExists)
+  {
+    throw new ApiError(404,"Sysytem User Account doesnt Exists")
+  }
+
+  // const fromUserBalance = await fromUserAccountExists.getbalance()
+
+  // if(fromUserBalance<amount)
+  // {
+  //   throw new ApiError(403,`Insufficient funds, current balance ${fromUserBalance}`)
+  // }
+
+  const session = await mongoose.startSession()
+  session.startTransaction()
+
+  const newTransaction = new Transaction({
+    fromAccount:fromUserAccountExists._id,
+    toAccount,
+    amount,
+    idempotencyKey
+  })
+
+  const debitLedgerEntry = await Ledger.create([{
+      account:fromUserAccountExists._id,
+      amount,
+      transaction:newTransaction._id,
+      type:'Debit',
+
+  }],{ session })
+
+  const creditLedgerEntry = await Ledger.create([{
+    account:toAccount,
+    amount,
+    transaction:newTransaction._id,
+    type:"Credit"
+  }],{ session })
+
+  newTransaction.status="Completed"
+  await newTransaction.save({ session })
+
+  session.commitTransaction()
+  session.endSession()
+
+  await sendTransactionEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
+
+  return res.status(201)
+            .json(new ApiResponse(201,newTransaction,"Initial funds transaction completed"))
+
+})
+export {
+  createTransaction,
+  createInitialFundTransaction
+}

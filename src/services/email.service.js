@@ -1,10 +1,9 @@
 import nodemailer from "nodemailer"
-import { asyncHandler } from "../utils/asyncHandler";
 
 const transporter = nodemailer.createTransport({
   service:'gmail',
   auth:{
-    type :'0Auth2',
+    type :'OAuth2',
     user : process.env.USER_EMAIL,
     clientId : process.env.CLIENT_ID,
     clientSecret : process.env.CLIENT_SECRET,
@@ -12,16 +11,18 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+
 try {
   await transporter.verify();
-  console.log("server is ready to take our messages");
+  console.log("server is ready to take our email messages");
 } catch (err) {
   console.log("Transporter Verification failed : ",err)
 }
 
 const sendEmail = async(to, subject, text, html)=>{
   try {
-    const info = await transporter.sendEmail({
+    
+    const info = await transporter.sendMail({
       from:`"Payment-Backend" <${process.env.USER_EMAIL}>`,
       to,
       subject,
@@ -33,7 +34,8 @@ const sendEmail = async(to, subject, text, html)=>{
     console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
 
   } catch (error) {
-    console.error("Error while sending mail:", err)
+    console.error("Error while sending mail:", error)
+    throw error
   }
 }
 
@@ -45,7 +47,10 @@ async function sendRegistrationEmail(userEmail,name){
 
   We're excited to have you on board!
 
+  This service is provided by Enosh
+
   Best regards,
+  Enosh,
   The Payment-Backend Team`
 
   const html = `
@@ -55,7 +60,11 @@ async function sendRegistrationEmail(userEmail,name){
       We're excited to have you on board!
   </p>
   <p>
+    This service is provided by <strong>Enosh<strong>
+  </p>
+  <p>
       Best regards,<br>
+      <strong>Enosh<strong>,<br>
       <strong>The Payment-Backend Team</strong>
   </p>
 `
