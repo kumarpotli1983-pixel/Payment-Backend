@@ -31,7 +31,7 @@ accountSchema.methods.getBalance = async function(){
   const balanceData = await Ledger.aggregate([
     {
       $match:{
-      _id
+      account:this._id
       }
     },
     {
@@ -65,10 +65,7 @@ accountSchema.methods.getBalance = async function(){
     }
     ])
 
-  if(balanceData.length===0)
-  {
-    return 0;
-  }
+  return balanceData[0]?.balance ?? 0;
 }
 
 accountSchema.index({ user:1, status:1 })
