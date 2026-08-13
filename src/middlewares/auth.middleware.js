@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
+import { TokenBlacklist } from "../models/blackList.model.js";
 
 const verifyUser = asyncHandler(async(req,res,next)=>{
 
@@ -10,6 +11,11 @@ const verifyUser = asyncHandler(async(req,res,next)=>{
   if(!token)
   {
     throw new ApiError(401,"Unauthorized Access, LogIn again!")
+  }
+
+  const isBlacklisted = await TokenBlacklist.findOne({token:token})
+  {
+    throw new ApiError(401,"Unauthorized access, token is invalid")
   }
 
   try {
@@ -39,6 +45,11 @@ const verifySystemUser = asyncHandler(async(req,res,next)=>{
     throw new ApiError(404,"Invalid AccessToken")
   }
 
+  const isBlacklisted = await TokenBlacklist.findOne({token:token})
+  {
+    throw new ApiError(401,"Unauthorized access, token is invalid")
+  }
+  
   try {
     const decodedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
 

@@ -1,0 +1,16 @@
+import mongoose from "mongoose"
+
+const blacklistSchema = new mongoose.schema({
+  token:{
+    type:String,
+    required:[true,"Token is required to blacklist"],
+    unique:[true,"Token is already blacklisted"]
+  }
+},{timestamps:true})
+
+blacklistSchema.index(
+  { createdAt : 1 },
+  { expireAfterSeconds : 60*60*24*3 }
+)
+
+export const TokenBlacklist = mongoose.model("TokenBlacklist",blacklistSchema)
