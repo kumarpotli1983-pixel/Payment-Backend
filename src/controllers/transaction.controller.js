@@ -25,7 +25,7 @@ const createTransaction = asyncHandler(async(req,res)=>{
 
   const { fromAccount, toAccount, amount, idempotencyKey } = req.body
 
-  if([fromAccount,toAccount,amount,idempotencyKey].some((field)=>!field || field.trim()===""))
+  if([fromAccount,toAccount,amount,idempotencyKey].some((field)=>!field))
   {
     throw new ApiError(400,"all fields are required to make transation")
   }
@@ -82,22 +82,20 @@ const createTransaction = asyncHandler(async(req,res)=>{
     throw new ApiError(403,`Insufficient Balance. Balance amount:${senderBalance}`)
   }
 
-
   // new transaction
 
-  const session = await  mongoose.startSession()
-  
-
-  try {
-    session.startTransaction()
-
-    const newTransaction = new Transaction({
+  let session
+  let newTransaction = await Transaction.create({
       fromAccount,
       toAccount,
       amount,
       status:"Pending",
       idempotencyKey,
     })
+
+  try {
+    session = await  mongoose.startSession()
+    session.startTransaction()
 
     const debitLedgerEntry = await Ledger.create([{
       account: fromAccount,
@@ -106,6 +104,10 @@ const createTransaction = asyncHandler(async(req,res)=>{
       type:"Debit"
     }],{ session })
 
+    await (() => {
+            return new Promise((resolve) => setTimeout(resolve, 15 * 1000));
+        })()
+
     const creditLedgerEntry = await Ledger.create([{
       account: toAccount,
       amount: amount,
@@ -113,18 +115,38 @@ const createTransaction = asyncHandler(async(req,res)=>{
       type:"Credit"
     }],{ session })
 
-    newTransaction.status = "Completed"
-    await newTransaction.save({ session })
+    newTransaction = await Transaction.findByIdAndUpdate(
+      newTransaction._id,
+      {
+        $set:{
+          status:"Completed"
+        }
+      },
+      {
+        new:true,
+        session
+      }
+    )
 
     await session.commitTransaction()
 
     await sendTransactionEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
     
   } catch (error) {
-    newTransaction.status = "Failed"
-    await newTransaction.save({ session })
 
-    await session.abortTransaction()
+    if(session){
+      await session.abortTransaction()      
+    }
+    
+    newTransaction = await Transaction.findByIdAndUpdate(
+      newTransaction._id,
+      {
+        $set:{
+          status:"Failed"
+        }
+      },
+      { new:true }
+    )
 
     await sendTransactionFailedEmail(req.user.email, req.user.name, amount, toAccount, newTransaction._id)
 
@@ -194,13 +216,6 @@ const createInitialFundTransaction = asyncHandler(async(req,res)=>{
     throw new ApiError(404,"Sysytem User Account doesnt Exists")
   }
 
-  // const fromUserBalance = await fromUserAccountExists.getbalance()
-
-  // if(fromUserBalance<amount)
-  // {
-  //   throw new ApiError(403,`Insufficient funds, current balance ${fromUserBalance}`)
-  // }
-
   const session = await mongoose.startSession()
   session.startTransaction()
 
@@ -238,6 +253,7 @@ const createInitialFundTransaction = asyncHandler(async(req,res)=>{
             .json(new ApiResponse(201,newTransaction,"Initial funds transaction completed"))
 
 })
+
 export {
   createTransaction,
   createInitialFundTransaction
