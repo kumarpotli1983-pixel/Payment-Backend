@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 
-const blacklistSchema = new mongoose.schema({
+const blacklistSchema = new mongoose.Schema({
   token:{
     type:String,
     required:[true,"Token is required to blacklist"],
