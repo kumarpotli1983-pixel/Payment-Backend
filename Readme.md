@@ -36,6 +36,7 @@ both are same
 =========================================================================
 # dotenv
 - file where all secrets/sensitive data are stored
+* dotenv should be top of the file 
 =========================================================================
 # db file
 - create db folder and a file in it 
@@ -70,13 +71,110 @@ dotenv.config({
 
 * cookie-parser dont help in creating cookies but helps in reading it and putting it into req.cookes. same like express.json() as we used to take data and structurize in form of object similarly cookie-paser take data in the form of stering and converts it into cookie object which can be retrived using re.cookies
 
-==========================================================================
+=========================================================================
 # define ApiError and ApiResponse and asyncHandler 
 
 - define and customize above things for the handling Api's.
 - create auth controller / user controller , auth routes
-==========================================================================
+=========================================================================
 # authcontroller
 
 - sometimes we take data/info from user in req.body but express cant take raw data or json files so we use "app.use(express.json())"
      -- simply express server cannot directly read info passed on req.body so we will use ...
+-> login user 
+-> logout user 
+    while doing this take user token and block for none to use that token and register or reterive data
+-> register user
+    both registering and login same time , not first register then login but both at once
+=========================================================================
+# Nodemailer,Google 0AUTH2 setup 
+- followed from anukur prajapati's "difference-backend-repo"
+- read blog of nodemailer
+1. creating a transporter
+2. compose message
+3. send the mail
+
+-> getting clientId, clientSecret, refreshToken
+=========================================================================
+# Account Model, Router, VerifyUser, Controller
+- take user id, status, currency 
+- build router and then add path in app.js
+- check whether user is logged in or not
+- in account controller , add createAccount
+=========================================================================
+# AuthMiddleware
+
+-> check before if user asks for account details / transactions whether user is logged in or not / verified or not
+-> verify system user , to send system initial funds
+
+=========================================================================
+# Transaction Controller and Router 
+
+- controller should have
+   1. validate input info
+   2. validate idempotency , check if same exists
+        -> if exists then return status of that 
+   3. check given to and from accounts are valid and active 
+   4. check balance from sender to check (transaction possibilty)
+   5. check if amount if valid or not i.e >0
+   6. start mongodb session for transactions
+   7. ledgerDebitEntry , ledgerCreditEntry
+   8. transaction status , make it completed
+   9. commit/abort transaction
+   10. send trnsaction successful mail
+
+--> MongoDb session 
+        startSession() => context
+            ↓
+        startTransaction() => set of operations under it either all have to pass or neither one makes out
+            ↓
+        operations => functions that are under one session
+            ↓
+        commit / abort => if all are passed then commit session 
+                       => else abort it i.e all operations are rolled back 
+            ↓
+        endSession()
+
+    what actually meant by rollback , how -100 later if a operation fails send +100 to sender. how exactly the rollback works?
+
+    -> in one point, with help of session and transaction we will make a virtual or rather temporary changes and store them somewhere , whereas the original money everything is same upto to commit/abort command ,now based on this command it will decide whether to make tempo orignal or discard it
+    -> actually , if sender sends 100 then 1000-100=900 is with sender and reciver+100, but if due to any err in later opertions the these new things are not commited , ssimply like whether u save it after modification or dont save it
+========================================================================
+# blacklist model 
+-> create model and we can use to blacklist the already used token 
+-> to enhance security
+
+=========================================================================
+                        V2
+=========================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=========================================================================
+# Things learned from this 
+
+1. Nodemailer
+2. Google 0AUTH2
+3. MongoDb session
+4. blacklisting
+5. transactions
+6. ledger
+=========================================================================
+# Feauters added by me
+
+1. resend
+    -> after user registration , send verify link to user account and also welcome email
+
