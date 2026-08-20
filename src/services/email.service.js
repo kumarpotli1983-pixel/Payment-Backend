@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import jwt from 'jsonwebtoken'
 
 const transporter = nodemailer.createTransport({
   service:'gmail',
@@ -10,7 +11,6 @@ const transporter = nodemailer.createTransport({
     refreshToken : process.env.REFRESH_TOKEN
   }
 });
-
 
 try {
   await transporter.verify();
@@ -39,7 +39,117 @@ const sendEmail = async(to, subject, text, html)=>{
   }
 }
 
-async function sendRegistrationEmail(userEmail,name){
+async function sendVerificationEmail (to, token){
+  const subject = 'Verify your Email'
+
+  const expiresInMinutes = 4
+  const expiresAt = new Date(Date.now()+expiresInMinutes * 60 * 1000)
+  const verificationLink = `http://localhost:3500/verify-email/${token}`;
+  const text = `
+      Hello,
+
+      Please verify your email address by clicking the link below:
+
+      ${verificationLink}
+
+      This link will expire in 4 minutes.
+
+      Expires at: ${expiresAt.toLocaleTimeString()}
+
+      Best regards,
+      Payment-Backend Team
+  `;
+  const html = `
+    <h2>Verify Your Email</h2>
+
+    <p>Please verify your email address:</p>
+
+    <p>
+      <a href="${verificationLink}">Verify Email</a>
+    </p>
+
+    <p>
+      This link will expire in <strong>4 minutes</strong>.
+    </p>
+
+    <p>
+      <strong>Expires at:</strong> ${expiresAt.toLocaleTimeString()}
+    </p>
+
+    <p>
+      If you did not create this account, you can ignore this email.
+    </p>
+  `;
+  await sendEmail(to,subject,text,html)
+
+}
+
+async function sendResetPasswordEmail (to,token){
+  const subject = "Reset Your Password"
+  const expiresInMinutes = 3
+  const expiresAt = new Date(Date.now()+expiresInMinutes * 60 * 1000)
+  const resetLink = `http://localhost:3500/reset-password/${token}`;
+
+  const text = `
+    Hello,
+
+    We received a request to reset your Payment-Backend password.
+
+    Please click the link below to reset your password:
+
+    ${resetLink}
+
+    This link will expire in ${expiresInMinutes} minutes.
+
+    Expires at: ${expiresAt.toLocaleTimeString()}
+
+    If you did not request a password reset, you can safely ignore this email.
+
+    Best regards,
+    Payment-Backend Team
+    `;
+
+  const html = `
+    <h2>Reset Your Password</h2>
+
+    <p>Hello,</p>
+
+    <p>
+      We received a request to reset your
+      <strong>Payment-Backend</strong> password.
+    </p>
+
+    <p>
+      <a href="${resetLink}">
+        Reset Password
+      </a>
+    </p>
+
+    <p>
+      This link will expire in
+      <strong>${expiresInMinutes} minutes</strong>.
+    </p>
+
+    <p>
+      <strong>Expires at:</strong>
+      ${expiresAt.toLocaleTimeString()}
+    </p>
+
+    <p>
+      If you did not request a password reset,
+      you can safely ignore this email.
+    </p>
+
+    <p>
+      Best regards,<br>
+      <strong>Payment-Backend Team</strong>
+    </p>
+  `;
+
+  await sendEmail(to, subject, text, html); 
+}
+
+async function sendWelcomeEmail(userEmail,name){
   const subject = 'Welcome to Payment-Backend!'
   const text = `Hello ${name},
 
@@ -178,7 +288,9 @@ async function sendTransactionFailedEmail (userEmail, name, amount, toAccount, t
 }
 
 export {
-  sendRegistrationEmail,
+  sendWelcomeEmail,
   sendTransactionEmail,
-  sendTransactionFailedEmail
+  sendTransactionFailedEmail,
+  sendResetPasswordEmail,
+  sendVerificationEmail
 }

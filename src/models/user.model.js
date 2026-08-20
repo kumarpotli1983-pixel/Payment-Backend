@@ -18,8 +18,6 @@ const userSchema = new mongoose.Schema({
   },
   password:{
     type:String,
-    required:[true,"Password is required for creating account"],
-    minlength:[6,"password should contain more than 6 characters"],
     select:false
   },
   refreshToken:{
@@ -30,6 +28,15 @@ const userSchema = new mongoose.Schema({
     default:false,
     immutable:true,
     select:false
+  },
+  verifiedUser:{
+    type:Boolean,
+    default:false,
+  },
+  authProvider:{
+    type:String,
+    enum:["Local","Google"],
+    default:"Local"
   }
 },
 {timestamps:true})

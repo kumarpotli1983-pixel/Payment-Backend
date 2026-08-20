@@ -2,8 +2,9 @@ import { User } from "../models/user.model.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import { sendRegistrationEmail } from "../services/email.service.js"
+import { sendVerificationEmail, sendResetPasswordEmail } from "../services/email.service.js"
 import { TokenBlacklist } from "../models/blackList.model.js"
+import { generateVerificationToken } from "../utils/token.js"
 
 const generateAccessAndRefreshTokens = async(userId)=>{
   try {
@@ -46,29 +47,13 @@ const registerUser = asyncHandler(async(req,res)=>{
     name
   })
 
-  const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(user._id)
+  const verificationToken = generateVerificationToken(user._id,process.env.EMAIL_TOKEN_SECRET,'4m')
+  
+  await sendVerificationEmail(email, verificationToken)
 
-  const options={
-    httpOnly : true,
-    secure : true
-  }
+  return res.status(200)
+            .json(new ApiResponse(200,user,"An verification email sent, please verify"))
 
-  res.status(201)
-      .cookie("accessToken",accessToken,options)
-      .cookie("refreshToken",refreshToken,options)
-      .json(new ApiResponse(201,{
-        user:{
-          _id:user._id,
-          email:user.email,
-          name:user.name
-        },
-        accessToken,
-        refreshToken
-      },
-      "User registered Successfully"
-      ))
-    
-  await sendRegistrationEmail(email,name);
 })
 
 const loginUser = asyncHandler(async(req,res)=>{
@@ -83,7 +68,11 @@ const loginUser = asyncHandler(async(req,res)=>{
 
   if(!user)
   {
-    throw new ApiError(404,"User not registered")
+    throw new ApiError(404,"User not Registered")
+  }
+  if(!user.authProvider === "Google")
+  {
+    throw new ApiError(400,"This account was created by Google, Please login with Google")
   }
 
   const isPasswordCorrect = await user.comparePassword(password)
@@ -94,6 +83,8 @@ const loginUser = asyncHandler(async(req,res)=>{
   }
 
   const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(user._id)
+  user.refreshToken = refreshToken
+  await user.save({validateBeforeSave:false})
 
   const options={
     httpOnly:true,
@@ -109,6 +100,35 @@ const loginUser = asyncHandler(async(req,res)=>{
               name:user.name
             }},"Logged in Successfully"))
 })
+
+const forgotPassword = asyncHandler(async(req,res)=>{
+    const { email } = req.body;
+
+    if (!email) {
+        throw new ApiError(400, "Email is required");
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new ApiError(400, "Email not registered");
+    }
+
+    const resetToken = generateVerificationToken(
+        user._id,
+        process.env.PASSWORD_TOKEN_SECRET
+    );
+
+    await sendResetPasswordEmail(email, resetToken);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {},
+            "Password reset link sent to your email"
+        )
+    );
+}) 
 
 const logoutUser = asyncHandler(async(req,res)=>{
   const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","")
@@ -133,5 +153,7 @@ const logoutUser = asyncHandler(async(req,res)=>{
 export {
   registerUser,
   loginUser,
-  logoutUser
+  logoutUser,
+  generateAccessAndRefreshTokens,
+  forgotPassword
 }
